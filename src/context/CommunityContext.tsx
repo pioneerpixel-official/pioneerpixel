@@ -25,6 +25,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   fetchStudentsFromCloud,
   syncStudentToCloud,
+  deleteStudentFromCloud,
   fetchSkillGroupsFromCloud,
   syncSkillGroupToCloud,
   fetchCommonTaskFromCloud,
@@ -249,36 +250,32 @@ export const CommunityProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // 1. Initial Cloud Sync: Fetch live students
     fetchStudentsFromCloud().then((cloudStudents) => {
       if (cloudStudents && cloudStudents.length > 0) {
-        // Auto-migration: Check if this user or student signed up locally before Supabase was connected
-        let localStudents: StudentProfile[] = [];
+        let deletedIds: string[] = [];
         try {
-          const stored = localStorage.getItem(`${STORAGE_KEY}_students`);
-          if (stored) localStudents = JSON.parse(stored);
+          const storedDeleted = localStorage.getItem(`${STORAGE_KEY}_deleted_ids`);
+          if (storedDeleted) deletedIds = JSON.parse(storedDeleted);
         } catch (e) {
-          console.warn('Error reading local students', e);
+          console.warn('Error reading deleted IDs', e);
         }
 
-        const missingFromCloud = localStudents.filter(
-          (loc) =>
-            loc.id !== 'pioneerpixel-host-admin' &&
-            loc.email.toLowerCase() !== HOST_ADMIN_EMAIL &&
-            !cloudStudents.some(
-              (cs) => cs.id === loc.id || cs.email.toLowerCase() === loc.email.toLowerCase()
-            )
+        // Clean out any users that were previously deleted by Host Admin
+        const validStudents = cloudStudents.filter(
+          (cs) =>
+            !deletedIds.includes(cs.id) &&
+            !deletedIds.includes(cs.email.toLowerCase())
         );
 
-        if (missingFromCloud.length > 0) {
-          // Upload any student who registered locally before the cloud was connected!
-          missingFromCloud.forEach((stu) => {
-            syncStudentToCloud(stu);
-          });
-          setStudents([...missingFromCloud, ...cloudStudents]);
-        } else {
-          setStudents(cloudStudents);
-        }
+        // Ensure Host Admin is always preserved
+        const hasHostAdmin = validStudents.some(
+          (s) => s.id === 'pioneerpixel-host-admin' || s.email.toLowerCase() === HOST_ADMIN_EMAIL
+        );
+        const finalStudents = hasHostAdmin ? validStudents : [HOST_ADMIN, ...validStudents];
+
+        setStudents(finalStudents);
       } else {
         // First time initialization in Cloud: upload host admin
         syncStudentToCloud(HOST_ADMIN);
+        setStudents([HOST_ADMIN]);
       }
     });
 
@@ -388,6 +385,9 @@ export const CommunityProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const currentUser = students.find((s) => s.id === currentUserId) || null;
   const isAdmin = currentUser?.role === 'admin';
+  const isHostAdmin =
+    currentUser?.id === 'pioneerpixel-host-admin' ||
+    currentUser?.email?.toLowerCase() === HOST_ADMIN_EMAIL;
 
   // Auth functions
   const login = (email: string, password?: string) => {
@@ -994,6 +994,10 @@ export const CommunityProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const makeStudentAdmin = (studentId: string) => {
+    if (!isHostAdmin) {
+      alert('Permission denied. Only the Host Admin (Arsalan Sahil) can assign admin privileges.');
+      return;
+    }
     setStudents((prev) =>
       prev.map((s) => {
         if (s.id === studentId) {
@@ -1007,6 +1011,10 @@ export const CommunityProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const demoteAdminToStudent = (studentId: string) => {
+    if (!isHostAdmin) {
+      alert('Permission denied. Only the Host Admin (Arsalan Sahil) can remove admin privileges.');
+      return;
+    }
     const target = students.find((s) => s.id === studentId);
     if (studentId === 'pioneerpixel-host-admin' || target?.email.toLowerCase() === HOST_ADMIN_EMAIL) return;
     setStudents((prev) =>
@@ -1080,12 +1088,50 @@ export const CommunityProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const deleteStudent = (studentId: string) => {
+    // Only Host Admin (Arsalan Sahil) has permission to delete students
+    if (!isHostAdmin) {
+      alert('Permission denied. Only the Host Admin can delete students.');
+      return;
+    }
+
     const target = students.find((s) => s.id === studentId);
-    if (studentId === 'pioneerpixel-host-admin' || target?.email.toLowerCase() === HOST_ADMIN_EMAIL) return;
-    setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    if (studentId === 'pioneerpixel-host-admin' || target?.email.toLowerCase() === HOST_ADMIN_EMAIL) {
+      return;
+    }
+
+    const targetEmail = target?.email.toLowerCase();
+
+    // 1. Remove from state immediately
+    setStudents((prev) =>
+      prev.filter((s) => s.id !== studentId && s.email.toLowerCase() !== targetEmail)
+    );
+
+    // 2. Clear current user if they are the one deleted
     if (currentUserId === studentId) {
       setCurrentUserId('');
     }
+
+    // 3. Remove student from all skill group memberships
+    setGroups((prev) =>
+      prev.map((g) => ({
+        ...g,
+        memberIds: g.memberIds.filter((mid) => mid !== studentId),
+      }))
+    );
+
+    // 4. Record deleted ID & email in localStorage to ensure they never resurrect
+    try {
+      const deletedKey = `${STORAGE_KEY}_deleted_ids`;
+      const currentDeleted: string[] = JSON.parse(localStorage.getItem(deletedKey) || '[]');
+      if (!currentDeleted.includes(studentId)) currentDeleted.push(studentId);
+      if (targetEmail && !currentDeleted.includes(targetEmail)) currentDeleted.push(targetEmail);
+      localStorage.setItem(deletedKey, JSON.stringify(currentDeleted));
+    } catch (e) {
+      console.warn('Error saving deleted ID to localStorage', e);
+    }
+
+    // 5. Permanently delete from Supabase Cloud Database
+    deleteStudentFromCloud(studentId, targetEmail);
   };
 
   const resetToDefaults = () => {
@@ -1114,6 +1160,7 @@ export const CommunityProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         uploadRequests,
         communityPosts,
         isAdmin,
+        isHostAdmin,
         login,
         signup,
         resetPassword,

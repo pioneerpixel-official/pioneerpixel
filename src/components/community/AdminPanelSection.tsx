@@ -24,6 +24,7 @@ export const AdminPanelSection: React.FC = () => {
   const {
     currentUser,
     isAdmin,
+    isHostAdmin,
     students,
     groups,
     commonTask,
@@ -243,16 +244,18 @@ export const AdminPanelSection: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={resetToDefaults}
-              type="button"
-              className="px-3 py-1.5 rounded-lg bg-[#FFFFFF] hover:bg-[#F3F4F6] border border-[#D1D5DB] text-[11px] font-mono text-[#666666] hover:text-[#080808] cursor-pointer shadow-xs"
-              title="Reset state to initial seed demonstration data"
-            >
-              Reset Data to Defaults
-            </button>
-          </div>
+          {isHostAdmin && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={resetToDefaults}
+                type="button"
+                className="px-3 py-1.5 rounded-lg bg-[#FFFFFF] hover:bg-[#F3F4F6] border border-[#D1D5DB] text-[11px] font-mono text-[#666666] hover:text-[#080808] cursor-pointer shadow-xs"
+                title="Reset state to initial seed demonstration data"
+              >
+                Reset Data to Defaults
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Admin Navigation Sub-Tabs */}
@@ -378,11 +381,11 @@ export const AdminPanelSection: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-2">
-                            {st.id === 'pioneerpixel-host-admin' ? (
+                            {st.id === 'pioneerpixel-host-admin' || st.email?.toLowerCase() === 'arsalansahil02@gmail.com' ? (
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#080808] text-white font-bold">
                                 Host Admin (Root)
                               </span>
-                            ) : (
+                            ) : isHostAdmin ? (
                               <>
                                 {st.role !== 'admin' ? (
                                   <button
@@ -407,18 +410,26 @@ export const AdminPanelSection: React.FC = () => {
                                 {st.id !== currentUser?.id && (
                                   <button
                                     onClick={() => {
-                                      if (window.confirm(`Delete student ${st.name}?`)) {
+                                      if (
+                                        window.confirm(
+                                          `Permanently delete user ${st.name} (${st.email})? This user will be removed completely from the community, dashboard, and database.`
+                                        )
+                                      ) {
                                         deleteStudent(st.id);
                                       }
                                     }}
                                     type="button"
                                     className="p-1 rounded text-[#888888] hover:text-[#DC2626] transition-colors cursor-pointer"
-                                    title="Delete student"
+                                    title="Permanently Delete User"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 )}
                               </>
+                            ) : (
+                              <span className="text-[10px] font-mono text-[#888888]">
+                                {st.role === 'admin' ? 'Admin' : 'Student'}
+                              </span>
                             )}
                           </div>
                         </td>

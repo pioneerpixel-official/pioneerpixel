@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectTab,
   onOpenAuth,
 }) => {
-  const { currentUser, isAdmin, logout, resetToDefaults } = useCommunity();
+  const { currentUser, isAdmin, isHostAdmin, logout, resetToDefaults } = useCommunity();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
@@ -238,20 +238,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <span>Sign Out</span>
                           </button>
 
-                          <button
-                            onClick={() => {
-                              if (window.confirm('Reset all website data to clean state?')) {
-                                resetToDefaults();
-                                setSwitcherOpen(false);
-                              }
-                            }}
-                            type="button"
-                            className="text-[10px] font-mono text-[#888888] hover:text-[#080808] hover:underline flex items-center gap-1 cursor-pointer"
-                            title="Reset demo data"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                            <span>Reset All Data</span>
-                          </button>
+                          {isHostAdmin && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Reset all website data to clean state?')) {
+                                  resetToDefaults();
+                                  setSwitcherOpen(false);
+                                }
+                              }}
+                              type="button"
+                              className="text-[10px] font-mono text-[#888888] hover:text-[#080808] hover:underline flex items-center gap-1 cursor-pointer"
+                              title="Reset demo data"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Reset All Data</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </>

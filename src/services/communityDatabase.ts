@@ -104,6 +104,28 @@ export async function syncStudentToCloud(student: StudentProfile): Promise<boole
   }
 }
 
+// Delete student permanently from Cloud DB
+export async function deleteStudentFromCloud(studentId: string, email?: string): Promise<boolean> {
+  if (!isSupabaseConfigured || !supabase) return false;
+  try {
+    const { error: idErr } = await supabase.from('students').delete().eq('id', studentId);
+    if (email) {
+      await supabase.from('students').delete().eq('email', email.toLowerCase().trim());
+    }
+    // Also remove any pending upload requests from this student
+    await supabase.from('upload_requests').delete().eq('student_id', studentId);
+
+    if (idErr) {
+      console.warn('Error deleting student from Supabase:', idErr);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Supabase network error deleting student:', err);
+    return false;
+  }
+}
+
 // Fetch Skill Groups from Cloud DB
 export async function fetchSkillGroupsFromCloud(): Promise<SkillGroup[] | null> {
   if (!isSupabaseConfigured || !supabase) return null;

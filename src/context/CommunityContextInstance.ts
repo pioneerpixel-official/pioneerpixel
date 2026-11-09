@@ -19,6 +19,7 @@ export interface CommunityContextType {
   uploadRequests: UploadRequest[];
   communityPosts: CommunityPost[];
   isAdmin: boolean;
+  isHostAdmin: boolean;
 
   // Auth & User switching
   login: (email: string, password?: string) => { success: boolean; error?: string };
