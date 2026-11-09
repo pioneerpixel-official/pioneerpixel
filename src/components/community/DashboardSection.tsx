@@ -304,23 +304,35 @@ export const DashboardSection: React.FC = () => {
                             </span>
                           </td>
 
-                          {/* Skills Badges */}
-                          <td className="py-3.5 px-4 max-w-xs">
-                            <div className="flex flex-wrap gap-1">
-                              {student.skills.slice(0, 3).map((sk) => (
-                                <span
-                                  key={sk.id}
-                                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#FFFFFF] border border-[#D1D5DB] text-[#080808] whitespace-nowrap"
-                                >
-                                  {sk.name}
-                                </span>
-                              ))}
-                              {student.skills.length > 3 && (
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F3F4F6] text-[#666666]">
-                                  +{student.skills.length - 3}
-                                </span>
-                              )}
-                            </div>
+                          {/* Skills Badges (1-2 skills + [ ...... ]) */}
+                          <td className="py-3.5 px-4 max-w-[190px]">
+                            {student.skills && student.skills.length > 0 ? (
+                              <div className="flex flex-wrap items-center gap-1">
+                                {student.skills.slice(0, 2).map((sk) => {
+                                  const isLong = sk.name.length > 14;
+                                  const displayName = isLong ? `${sk.name.slice(0, 14)}...` : sk.name;
+                                  return (
+                                    <span
+                                      key={sk.id}
+                                      title={sk.name}
+                                      className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#FFFFFF] border border-[#D1D5DB] text-[#080808] max-w-[110px] truncate inline-block"
+                                    >
+                                      {displayName}
+                                    </span>
+                                  );
+                                })}
+                                {(student.skills.length > 2 || student.skills.some((sk) => sk.name.length > 14)) && (
+                                  <span
+                                    className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F3F4F6] text-[#666666] font-bold"
+                                    title="View full profile to see all skills"
+                                  >
+                                    [ ...... ]
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] font-mono text-[#888888]">No skills</span>
+                            )}
                           </td>
 
                           {/* Skill Groups */}
@@ -508,20 +520,34 @@ export const DashboardSection: React.FC = () => {
                       <div className="text-[10px] uppercase font-mono text-[#666666] font-semibold mb-2">
                         Skills & Experience:
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {student.skills.slice(0, 4).map((sk) => (
-                          <span
-                            key={sk.id}
-                            className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F9FAFB] border border-[#E5E7EB] text-[#080808]"
-                          >
-                            {sk.name}
-                            <span className="text-[#666666] ml-1">({sk.experience})</span>
-                          </span>
-                        ))}
-                        {student.skills.length > 4 && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F3F4F6] text-[#666666]">
-                            +{student.skills.length - 4} more
-                          </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {student.skills && student.skills.length > 0 ? (
+                          <>
+                            {student.skills.slice(0, 2).map((sk) => {
+                              const isLong = sk.name.length > 16;
+                              const displayName = isLong ? `${sk.name.slice(0, 16)}...` : sk.name;
+                              return (
+                                <span
+                                  key={sk.id}
+                                  title={sk.name}
+                                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F9FAFB] border border-[#E5E7EB] text-[#080808] max-w-[140px] truncate"
+                                >
+                                  {displayName}
+                                  {sk.experience && <span className="text-[#666666] ml-1">({sk.experience})</span>}
+                                </span>
+                              );
+                            })}
+                            {(student.skills.length > 2 || student.skills.some((sk) => sk.name.length > 16)) && (
+                              <span
+                                className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F3F4F6] text-[#666666] font-bold"
+                                title="View full profile to see all skills"
+                              >
+                                [ ...... ]
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[10px] font-mono text-[#888888]">No skills added yet</span>
                         )}
                       </div>
                     </div>
